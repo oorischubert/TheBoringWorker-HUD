@@ -1,16 +1,20 @@
-# TheBoringWorker Documentation
+# TheBoringHUDs Documentation
 
-![TheBoringWorkerNotifier Build & Test](https://github.com/TheBoredTeam/TheBoringWorker/actions/workflows/cicd.yml/badge.svg)
+![TheBoringHUDs Build & Test](https://github.com/oorischubert/TheBoringWorker-HUD/actions/workflows/cicd.yml/badge.svg)
 
 ## Overview
 
-`TheBoringWorker` is a Swift-based macOS application designed to interface with the `boring.notch` service. It communicates using macOS Distributed Notification Center to send and receive notifications. `TheBoringWorker` sends data and notifications to `boring.notch`, which handles UI integration.
+`TheBoringHUDs` is a Swift-based macOS application that provides custom HUD (Heads-Up Display) management for system controls like volume, brightness, and other macOS features. It replaces the default system HUDs with a more customizable and integrated experience, designed to work seamlessly with the `boring.notch` interface system.
 
 ## Features
 
-- **Send Data**: Transmits data to `boring.notch`.
-- **Receive Notifications**: Listens for notifications from `boring.notch`.
-- **Immediate Notifications**: Supports sending notifications with an "deliverImmediately" flag.
+- **Custom HUD Management**: Replaces default macOS HUDs for volume, brightness, and other system controls
+- **Volume Control**: Monitors and manages audio output levels and mute status
+- **Brightness Control**: Handles display brightness adjustments
+- **Keyboard Monitoring**: Observes key press events for system controls
+- **Display Management**: Manages multiple display configurations
+- **Integration with boring.notch**: Seamlessly works with the boring.notch notification system
+- **Real-time Notifications**: Sends immediate updates to the notification system
 
 ## Prerequisites
 
@@ -22,74 +26,93 @@
 1. **Clone the Repository**
 
    ```sh
-   git clone https://github.com/TheBoredTeam/TheBoringWorker.git
-   cd TheBoringWorker
+   git clone https://github.com/oorischubert/TheBoringWorker-HUD.git
+   cd TheBoringWorker-HUD
    ```
 
 2. **Open the Project**
 
-   Open the `TheBoringWorker.xcodeproj` file in Xcode:
+   Open the `TheBoringHUDs.xcodeproj` file in Xcode:
 
    ```sh
-   open TheBoringWorker.xcodeproj
+   open TheBoringHUDs.xcodeproj
    ```
 
 3. **Build and Run**
 
-   Build and run the project in Xcode. Ensure all necessary permissions are granted for notifications and inter-process communication.
+   Build and run the project in Xcode. Ensure all necessary permissions are granted for:
 
-## Initialization
+   - Accessibility (for key monitoring)
+   - Notifications (for HUD display)
+   - System Events (for volume/brightness control)
 
-To initialize the notifier, use the following Swift code:
+## Core Components
+
+### Managers
+
+- **HUDManager**: Handles HUD notifications for brightness, volume, and other system controls
+- **VolumeManager**: Manages audio volume levels and mute status using AppleScript
+- **DisplayManager**: Controls display brightness and monitor configurations
+- **KeyboardManager**: Monitors keyboard events for system control shortcuts
+- **OSDUIManager**: Manages on-screen display elements
+
+### Models
+
+- **BoringViewModel**: Central view model that coordinates between different managers and the notification system
+
+## Usage
+
+### Initialize the HUD System
 
 ```swift
-import TheBoringWorkerNotifier
+import TheBoringHUDs
 
-let notifier = TheBoringWorkerNotifier()
+let viewModel = BoringViewModel()
+let hudManager = HUDManager(vm: viewModel)
 ```
 
-## Posting a Notification
-
-To post a notification, use the following Swift code snippet: [See example here](https://github.com/TheBoredTeam/TheBoringWorker/blob/e2915fcadf633acf879b8a882cd05c79a70f2a75/TheBoringWorker/models/BoringViewModel.swift#L30), you can create a method here and this is `vm` can be passed to your helper classes.
+### Send Volume Notifications
 
 ```swift
-notifier.postNotification(name: "theboringteam.theboringworker.togglemic", userInfo: ["key": "value"])
+// Get current volume level (0.0 to 1.0)
+let volume = VolumeManager.getOutputVolume()
+
+// Check if muted
+let isMuted = VolumeManager.isMuted()
+
+// Send volume update notification
+hudManager.sendVolumeNotification(value: volume, isMuted: isMuted)
 ```
 
-## Setting Up an Observer
-
-To set up an observer for notifications, use the following Swift code:
+### Send Brightness Notifications
 
 ```swift
-notifier.setupObserver(notification: notifier.toggleMicNotification) { notification in
-    // Handle the notification
-    print("Mic toggle notification received")
-}
+// Send brightness update (0.0 to 1.0)
+hudManager.sendBrightnessNotification(value: 0.75)
 ```
 
-## Available Notifications
+## Integration with boring.notch
 
-- `toggleMicNotification`
-- `toggleHudReplacementNotification`
-- `showClipboardNotification`
-- `sneakPeakNotification`
-- `micStatusNotification`
+`TheBoringHUDs` works in conjunction with the `boring.notch` system to provide a seamless HUD experience. The HUD manager sends notifications to the notch interface, which displays them in an elegant and unobtrusive way.
 
-Create your own notifications using `WorkerNotification` struct available with `TheBoringWorkerNotifier`
+### How it Works
 
-## How the heck boring.notch will know about the notification
+1. **System Event Detection**: The app monitors system events (volume changes, brightness adjustments, etc.)
+2. **HUD Generation**: When an event occurs, the appropriate manager creates a HUD notification
+3. **Notification Dispatch**: The notification is sent to `boring.notch` via the distributed notification system
+4. **UI Display**: `boring.notch` receives the notification and displays the HUD in the notch area
 
-Setup a new observer using `notifier.setupObserver` method here: [Click here](https://github.com/TheBoredTeam/boring.notch/blob/3362f50b9c57b158f73b144581def1a02746b567/boringNotch/models/BoringViewModel.swift#L207)
+For details on the UI components and integration, refer to the [boring.notch documentation](https://github.com/TheBoredTeam/boring.notch).
 
-![80466](https://github.com/user-attachments/assets/833a0450-52dc-41e9-a679-5cc1bd708b1e)
+## Permissions Required
 
-## UI Integration
+This app requires several macOS permissions to function properly:
 
-The user interface for `TheBoringWorker` is integrated within `boring.notch`. `TheBoringWorker` focuses on backend operations and notification handling, while `boring.notch` handles the user interface components.
+- **Accessibility Access**: For monitoring keyboard events and system controls
+- **Screen Recording**: For detecting display changes (may be required for some features)
+- **Notifications**: For sending HUD notifications to the system
 
-So new ui elements goes into: [Check this](https://github.com/TheBoredTeam/boring.notch/blob/3362f50b9c57b158f73b144581def1a02746b567/boringNotch/ContentView.swift#L183)
-
-For details on integrating `TheBoringWorker` with `boring.notch`, please refer to the [boring.notch documentation](https://github.com/TheBoredTeam/boring.notch).
+Grant these permissions in System Preferences > Security & Privacy when prompted.
 
 ## Contributing
 
@@ -107,4 +130,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Contact
 
-For any issues or questions, please open an issue on [GitHub](https://github.com/TheBoredTeam/TheBoringWorker/issues).
+For any issues or questions, please open an issue on [GitHub](https://github.com/oorischubert/TheBoringWorker-HUD/issues).
